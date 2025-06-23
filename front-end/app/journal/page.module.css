@@ -1,0 +1,35 @@
+.journalContainer {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.statsCards {
+  margin-bottom: 2rem;
+}
+
+.tableContainer {
+  margin-bottom: 2rem;
+}
+
+.addButton {
+  margin-bottom: 1rem;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.uploadArea {
+  border: 1px dashed #ccc;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.uploadArea:hover {
+  border-color: #1976d2;
+}
