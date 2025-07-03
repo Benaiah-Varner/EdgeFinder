@@ -36,19 +36,21 @@ const upload = multer({
 
 router.use(authenticateToken);
 
-router.post('/', [
+router.post('/', upload.single('image'), [
   body('symbol').notEmpty().trim(),
-  body('entryPrice').isFloat({ min: 0 }),
-  body('quantity').isInt({ min: 1 }),
+  body('entryPrice').toFloat().isFloat({ min: 0 }),
+  body('quantity').toInt().isInt({ min: 1 }),
   body('entryDate').isISO8601(),
   body('tradeType').optional().isIn(['LONG', 'SHORT']),
-  body('exitPrice').optional().isFloat({ min: 0 }),
+  body('exitPrice').optional().toFloat().isFloat({ min: 0 }),
   body('exitDate').optional().isISO8601(),
   body('description').optional().trim(),
-], upload.single('image'), async (req: AuthRequest, res: Response) => {
+  body('strategy').optional().trim(),
+], async (req: AuthRequest, res: Response) => {
   try {
-    console.log('req user ', req.user);
+
     const errors = validationResult(req);
+    console.log('validation errors ', errors.array());
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
@@ -61,7 +63,8 @@ router.post('/', [
       tradeType = 'LONG',
       exitPrice,
       exitDate,
-      description
+      description,
+      strategy,
     } = req.body;
 
     let pnl = null;
@@ -74,6 +77,25 @@ router.post('/', [
       }
     }
 
+    let strategyId = null;
+    if (strategy && strategy.trim()) {
+      let existingStrategy = await prisma.strategy.findFirst({
+        where: { name: strategy.trim() }
+      });
+
+      if (existingStrategy) {
+        strategyId = existingStrategy.id;
+      } else {
+        const newStrategy = await prisma.strategy.create({
+          data: {
+            name: strategy.trim(),
+            description: `Strategy: ${strategy.trim()}`
+          }
+        });
+        strategyId = newStrategy.id;
+      }
+    }
+    console.log('strategyId ', strategyId);
     const trade = await prisma.trade.create({
       data: {
         userId: req.user!.id,
@@ -86,6 +108,7 @@ router.post('/', [
         exitDate: exitDate ? new Date(exitDate) : null,
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
         description,
+        strategyId,
         pnl,
       }
     });
@@ -179,6 +202,7 @@ router.put('/:id', [
   body('exitPrice').optional().isFloat({ min: 0 }),
   body('exitDate').optional().isISO8601(),
   body('description').optional().trim(),
+  body('strategy').optional().trim(),
 ], upload.single('image'), async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);

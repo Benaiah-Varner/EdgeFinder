@@ -142,7 +142,9 @@ router.get('/user/:id', authenticateToken, async (req: AuthRequest, res: Respons
             description: true,
             imageUrl: true,
             createdAt: true,
-            updatedAt: true
+            updatedAt: true,
+            strategy: true,
+            strategyId: true,
           }
         }
       }

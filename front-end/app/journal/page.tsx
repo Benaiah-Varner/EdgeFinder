@@ -33,11 +33,10 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
-import { authenticatedFormDataFetch } from '@/utils/api';
 
 export interface Trade {
   id: string;
-  ticker: string;
+  symbol: string;
   entryPrice: number;
   exitPrice: number;
   entryDate: Date;
@@ -46,18 +45,16 @@ export interface Trade {
   strategy: string;
   description: string;
   image?: string;
+  pnl: number;
 }
 
 const STRATEGIES = [
   'Breakout',
-  'Pullback',
-  'Reversal',
-  'Momentum',
-  'Gap Trading',
-  'Support/Resistance',
-  'Swing Trading',
-  'Day Trading',
-  'Other',
+  'Bullish Divergence',
+  'Reject',
+  'Bounce',
+  'Bull flag',
+  'Break N Retest'
 ];
 
 export default function JournalPage() {
@@ -65,7 +62,8 @@ export default function JournalPage() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const { user } = useAuth();
+  const [dateFilter, setDateFilter] = useState<string>('All time');
+  const { user, token } = useAuth();
   console.log('user ', user);
   const [trades, setTrades] = useState<Trade[]>([]);
 
@@ -91,12 +89,15 @@ export default function JournalPage() {
 
   useEffect(() => {
     if (user) {
+      console.log('user trades ', user.trades);
       setTrades(user.trades);
     }
   }, [user]);
 
   const handleSubmit = async () => {
     try {
+      console.log('formData before sending:', formData);
+
       // Create FormData for file upload
       const formDataToSend = new FormData();
       formDataToSend.append('symbol', formData.ticker);
@@ -113,18 +114,21 @@ export default function JournalPage() {
       );
       formDataToSend.append('tradeType', 'LONG'); // Default trade type
       formDataToSend.append('description', formData.description);
+      formDataToSend.append('strategy', formData.strategy);
 
       if (formData.image) {
         formDataToSend.append('image', formData.image);
       }
 
-      const response = await authenticatedFormDataFetch(
-        'http://localhost:3001/trades',
-        formDataToSend,
-        {
-          method: 'POST',
-        }
-      );
+      const response = await fetch('http://localhost:3001/trades', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Don't set Content-Type - let the browser set it with the boundary for multipart/form-data
+        },
+        body: formDataToSend,
+        credentials: 'include',
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -219,18 +223,44 @@ export default function JournalPage() {
     setSelected(newSelected);
   };
 
-  // Calculate win rate
-  const winCount = trades.filter(trade => trade.outcome === 'win').length;
-  const winRate = trades.length > 0 ? (winCount / trades.length) * 100 : 0;
+  // Generate month options for the current year
+  const currentYear = new Date().getFullYear();
+  const monthOptions = [
+    'All time',
+    ...Array.from({ length: 12 }, (_, i) => {
+      const month = new Date(currentYear, i).toLocaleString('default', { 
+        month: 'long',
+        year: 'numeric'
+      });
+      return month;
+    })
+  ];
 
-  // Calculate risk/reward ratio
+  // Filter trades based on selected date filter
+  const filteredTrades = trades?.filter(trade => {
+    if (dateFilter === 'All time') {
+      return true;
+    }
+    
+    const tradeDate = new Date(trade.entryDate);
+    const filterDate = new Date(dateFilter);
+    
+    return tradeDate.getMonth() === filterDate.getMonth() && 
+           tradeDate.getFullYear() === filterDate.getFullYear();
+  }) || [];
+
+  // Calculate win rate using filtered trades
+  const winCount = filteredTrades.filter(trade => trade.pnl > 0).length;
+  const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.length) * 100 : 0;
+
+  // Calculate risk/reward ratio using filtered trades
   const riskRewardRatio =
-    trades.length > 0
-      ? trades.reduce((sum, trade) => {
-          const isWin = trade.outcome === 'win';
-          const pnl = trade.exitPrice - trade.entryPrice;
+    filteredTrades.length > 0
+      ? filteredTrades.reduce((sum, trade) => {
+          const isWin = trade.pnl > 0;
+          const pnl = trade.pnl;
           return isWin ? sum + Math.abs(pnl) : sum - Math.abs(pnl);
-        }, 0) / trades.length
+        }, 0) / filteredTrades.length
       : 0;
 
   return (
@@ -267,7 +297,7 @@ export default function JournalPage() {
                   {winRate.toFixed(1)}%
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {winCount} wins out of {trades.length} trades
+                  {winCount} wins out of {filteredTrades.length} trades
                 </Typography>
               </CardContent>
             </Card>
@@ -293,6 +323,23 @@ export default function JournalPage() {
           </Grid>
         </Grid>
 
+        <Box sx={{ mb: 3 }}>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Filter by Date</InputLabel>
+            <Select
+              value={dateFilter}
+              label="Filter by Date"
+              onChange={(e) => setDateFilter(e.target.value)}
+            >
+              {monthOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -300,16 +347,16 @@ export default function JournalPage() {
                 <TableCell padding="checkbox">
                   <Checkbox
                     indeterminate={
-                      selected.length > 0 && selected.length < trades.length
+                      selected.length > 0 && selected.length < filteredTrades.length
                     }
                     checked={
-                      trades.length > 0 && selected.length === trades.length
+                      filteredTrades.length > 0 && selected.length === filteredTrades.length
                     }
                     onChange={() => {
-                      if (selected.length === trades.length) {
+                      if (selected.length === filteredTrades.length) {
                         setSelected([]);
                       } else {
-                        setSelected(trades.map(trade => trade.id));
+                        setSelected(filteredTrades.map(trade => trade.id));
                       }
                     }}
                   />
@@ -324,48 +371,55 @@ export default function JournalPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {trades.map(trade => (
-                <TableRow
-                  key={trade.id}
-                  selected={selected.indexOf(trade.id) !== -1}
-                  sx={{
-                    '&:last-child td, &:last-child th': { border: 0 },
-                    backgroundColor:
-                      trade.outcome === 'win'
-                        ? 'rgba(76, 175, 80, 0.1)'
-                        : 'rgba(244, 67, 54, 0.1)',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      backgroundColor:
-                        trade.outcome === 'win'
-                          ? 'rgba(76, 175, 80, 0.2)'
-                          : 'rgba(244, 67, 54, 0.2)',
-                    },
-                  }}
-                  onClick={() => handleTradeClick(trade)}
-                >
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      checked={selected.indexOf(trade.id) !== -1}
-                      onChange={() => handleCheckboxClick(trade.id)}
-                    />
-                  </TableCell>
-                  <TableCell>{trade.ticker}</TableCell>
-                  <TableCell>${trade.entryPrice?.toFixed(2)}</TableCell>
-                  <TableCell>${trade.exitPrice?.toFixed(2)}</TableCell>
-                  <TableCell>{trade.entryDate?.toLocaleDateString()}</TableCell>
-                  <TableCell>{trade.exitDate?.toLocaleDateString()}</TableCell>
-                  <TableCell
+              {filteredTrades?.map(trade => {
+                const outcome = trade.pnl > 0 ? 'win' : 'loss';
+                return (
+                  <TableRow
+                    key={trade.id}
+                    selected={selected.indexOf(trade.id) !== -1}
                     sx={{
-                      color:
-                        trade.outcome === 'win' ? 'success.main' : 'error.main',
+                      '&:last-child td, &:last-child th': { border: 0 },
+                      backgroundColor:
+                        outcome === 'win'
+                          ? 'rgba(76, 175, 80, 0.1)'
+                          : 'rgba(244, 67, 54, 0.1)',
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor:
+                          outcome === 'win'
+                            ? 'rgba(76, 175, 80, 0.2)'
+                            : 'rgba(244, 67, 54, 0.2)',
+                      },
                     }}
+                    onClick={() => handleTradeClick(trade)}
                   >
-                    {trade.outcome === 'win' ? 'Win' : 'Loss'}
-                  </TableCell>
-                  <TableCell>{trade.strategy}</TableCell>
-                </TableRow>
-              ))}
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selected.indexOf(trade.id) !== -1}
+                        onChange={() => handleCheckboxClick(trade.id)}
+                      />
+                    </TableCell>
+                    <TableCell>{trade.symbol}</TableCell>
+                    <TableCell>${trade.entryPrice?.toFixed(2)}</TableCell>
+                    <TableCell>${trade.exitPrice?.toFixed(2)}</TableCell>
+                    <TableCell>
+                      {new Date(trade.entryDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(trade.exitDate).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color:
+                          outcome === 'win' ? 'success.main' : 'error.main',
+                      }}
+                    >
+                      {outcome === 'win' ? 'Win' : 'Loss'}
+                    </TableCell>
+                    <TableCell>{trade?.strategy && trade.strategy.name}</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -512,10 +566,10 @@ export default function JournalPage() {
                   </Typography>
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body1">
-                      <strong>Ticker:</strong> {selectedTrade.ticker}
+                      <strong>Ticker:</strong> {selectedTrade.symbol}
                     </Typography>
                     <Typography variant="body1">
-                      <strong>Strategy:</strong> {selectedTrade.strategy}
+                      <strong>Strategy:</strong> {selectedTrade?.strategy?.name}
                     </Typography>
                     <Typography variant="body1">
                       <strong>Entry Price:</strong> $
@@ -527,11 +581,11 @@ export default function JournalPage() {
                     </Typography>
                     <Typography variant="body1">
                       <strong>Entry Date:</strong>{' '}
-                      {selectedTrade.entryDate.toLocaleDateString()}
+                      {new Date(selectedTrade.entryDate).toLocaleDateString()}
                     </Typography>
                     <Typography variant="body1">
                       <strong>Exit Date:</strong>{' '}
-                      {selectedTrade.exitDate.toLocaleDateString()}
+                      {new Date(selectedTrade.exitDate).toLocaleDateString()}
                     </Typography>
                     <Typography
                       variant="body1"
@@ -562,19 +616,19 @@ export default function JournalPage() {
                   </Box>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  {selectedTrade.image && (
+                  {selectedTrade.imageUrl && (
                     <Box>
                       <Typography variant="h6" gutterBottom>
                         Trade Screenshot
                       </Typography>
                       <Box
                         component="img"
-                        src={selectedTrade.image}
+                        src={`http://localhost:3001${selectedTrade.imageUrl}`}
                         alt="Trade screenshot"
                         sx={{
                           width: '100%',
                           height: 'auto',
-                          maxHeight: 300,
+                          maxHeight: 500,
                           objectFit: 'contain',
                           border: '1px solid',
                           borderColor: 'divider',

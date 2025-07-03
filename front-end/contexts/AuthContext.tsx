@@ -20,6 +20,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  token: string | null;
   register: (
     email: string,
     password: string,
@@ -47,7 +48,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -61,6 +62,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userData = await response.json();
         console.log('userData ', userData);
         setUser(userData.user);
+        setToken(userData.token);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -159,6 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
+    token,
     isAuthenticated: !!user,
   };
 

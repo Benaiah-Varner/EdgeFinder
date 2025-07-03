@@ -28,7 +28,7 @@ export async function GET() {
 
     const userData = await response.json();
 
-    return NextResponse.json({ user: userData });
+    return NextResponse.json({ user: userData, token: token });
   } catch (error) {
     console.error('Auth verification error:', error);
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
