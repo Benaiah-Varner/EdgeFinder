@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import authController from './controllers/authController';
 import tradeController from './controllers/tradeController';
+import strategyController from './controllers/strategyController';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 app.use('/auth', authController);
 app.use('/trades', tradeController);
+app.use('/strategies', strategyController);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

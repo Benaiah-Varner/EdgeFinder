@@ -8,14 +8,16 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  firstName String?
-  lastName  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  trades    Trade[]
+  id         String     @id @default(cuid())
+  email      String     @unique
+  password   String
+  firstName  String?
+  lastName   String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  strategies Strategy[]
+  trades     Trade[]
+
   @@map("users")
 }
 
@@ -30,21 +32,26 @@ model Trade {
   exitDate    DateTime?
   tradeType   TradeType @default(LONG)
   imageUrl    String?
-  strategyId  String?
-  strategy    Strategy? @relation(fields: [strategyId], references: [id])
   description String?
   pnl         Float?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  strategyId  String?
+  strategy    Strategy? @relation(fields: [strategyId], references: [id])
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("trades")
 }
 
 model Strategy {
-  id     String   @id @default(cuid())
-  name   String
+  id          String  @id @default(cuid())
+  name        String
   description String?
-  trades Trade[]
+  userId      String
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades      Trade[]
+
+  @@map("strategies")
 }
 
 enum TradeType {

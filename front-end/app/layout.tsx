@@ -77,6 +77,14 @@ export default function RootLayout({
                       </ListItemButton>
                     </ListItem>
                     <ListItem disablePadding>
+                      <ListItemButton component={Link} href="/strategy">
+                        <ListItemIcon>
+                          <Image src="/globe.svg" alt="Strategy" width={24} height={24} />
+                        </ListItemIcon>
+                        <ListItemText primary="Strategy" />
+                      </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
                       <ListItemButton component={Link} href="/screening">
                         <ListItemIcon>
                           <Image src="/globe.svg" alt="Screening" width={24} height={24} />

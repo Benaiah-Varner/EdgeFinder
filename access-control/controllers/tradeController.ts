@@ -80,7 +80,10 @@ router.post('/', upload.single('image'), [
     let strategyId = null;
     if (strategy && strategy.trim()) {
       let existingStrategy = await prisma.strategy.findFirst({
-        where: { name: strategy.trim() }
+        where: {
+          name: strategy.trim(),
+          userId: req.user!.id
+        }
       });
 
       if (existingStrategy) {
@@ -89,7 +92,8 @@ router.post('/', upload.single('image'), [
         const newStrategy = await prisma.strategy.create({
           data: {
             name: strategy.trim(),
-            description: `Strategy: ${strategy.trim()}`
+            description: `Strategy: ${strategy.trim()}`,
+            userId: req.user!.id
           }
         });
         strategyId = newStrategy.id;
@@ -127,6 +131,9 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const trades = await prisma.trade.findMany({
       where: { userId: req.user!.id },
+      include: {
+        strategy: true
+      },
       orderBy: { createdAt: 'desc' }
     });
 

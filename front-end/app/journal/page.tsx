@@ -42,9 +42,14 @@ export interface Trade {
   entryDate: Date;
   exitDate: Date;
   outcome: 'win' | 'loss';
-  strategy: string;
+  strategy: {
+    id: string;
+    name: string;
+    description?: string;
+  };
   description: string;
   image?: string;
+  imageUrl?: string;
   pnl: number;
 }
 
@@ -54,7 +59,7 @@ const STRATEGIES = [
   'Reject',
   'Bounce',
   'Bull flag',
-  'Break N Retest'
+  'Break N Retest',
 ];
 
 export default function JournalPage() {
@@ -228,40 +233,37 @@ export default function JournalPage() {
   const monthOptions = [
     'All time',
     ...Array.from({ length: 12 }, (_, i) => {
-      const month = new Date(currentYear, i).toLocaleString('default', { 
+      const month = new Date(currentYear, i).toLocaleString('default', {
         month: 'long',
-        year: 'numeric'
+        year: 'numeric',
       });
       return month;
-    })
+    }),
   ];
 
   // Filter trades based on selected date filter
-  const filteredTrades = trades?.filter(trade => {
-    if (dateFilter === 'All time') {
-      return true;
-    }
-    
-    const tradeDate = new Date(trade.entryDate);
-    const filterDate = new Date(dateFilter);
-    
-    return tradeDate.getMonth() === filterDate.getMonth() && 
-           tradeDate.getFullYear() === filterDate.getFullYear();
-  }) || [];
+  const filteredTrades =
+    trades?.filter(trade => {
+      if (dateFilter === 'All time') {
+        return true;
+      }
+
+      const tradeDate = new Date(trade.entryDate);
+      const filterDate = new Date(dateFilter);
+
+      return (
+        tradeDate.getMonth() === filterDate.getMonth() &&
+        tradeDate.getFullYear() === filterDate.getFullYear()
+      );
+    }) || [];
 
   // Calculate win rate using filtered trades
   const winCount = filteredTrades.filter(trade => trade.pnl > 0).length;
-  const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.length) * 100 : 0;
+  const winRate =
+    filteredTrades.length > 0 ? (winCount / filteredTrades.length) * 100 : 0;
 
-  // Calculate risk/reward ratio using filtered trades
-  const riskRewardRatio =
-    filteredTrades.length > 0
-      ? filteredTrades.reduce((sum, trade) => {
-          const isWin = trade.pnl > 0;
-          const pnl = trade.pnl;
-          return isWin ? sum + Math.abs(pnl) : sum - Math.abs(pnl);
-        }, 0) / filteredTrades.length
-      : 0;
+  // Calculate total P/L using filtered trades
+  const totalPnL = filteredTrades.reduce((sum, trade) => sum + trade.pnl, 0);
 
   return (
     <ProtectedRoute>
@@ -306,17 +308,17 @@ export default function JournalPage() {
             <Card>
               <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
-                  Risk/Reward Ratio
+                  Total P/L
                 </Typography>
                 <Typography
                   variant="h4"
                   component="div"
-                  color={riskRewardRatio >= 0 ? 'success.main' : 'error.main'}
+                  color={totalPnL >= 0 ? 'success.main' : 'error.main'}
                 >
-                  {Math.abs(riskRewardRatio).toFixed(2)}
+                  ${totalPnL.toFixed(2)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Average R/R across all trades
+                  Total profit/loss across all trades
                 </Typography>
               </CardContent>
             </Card>
@@ -329,9 +331,9 @@ export default function JournalPage() {
             <Select
               value={dateFilter}
               label="Filter by Date"
-              onChange={(e) => setDateFilter(e.target.value)}
+              onChange={e => setDateFilter(e.target.value)}
             >
-              {monthOptions.map((option) => (
+              {monthOptions.map(option => (
                 <MenuItem key={option} value={option}>
                   {option}
                 </MenuItem>
@@ -347,10 +349,12 @@ export default function JournalPage() {
                 <TableCell padding="checkbox">
                   <Checkbox
                     indeterminate={
-                      selected.length > 0 && selected.length < filteredTrades.length
+                      selected.length > 0 &&
+                      selected.length < filteredTrades.length
                     }
                     checked={
-                      filteredTrades.length > 0 && selected.length === filteredTrades.length
+                      filteredTrades.length > 0 &&
+                      selected.length === filteredTrades.length
                     }
                     onChange={() => {
                       if (selected.length === filteredTrades.length) {
@@ -416,7 +420,7 @@ export default function JournalPage() {
                     >
                       {outcome === 'win' ? 'Win' : 'Loss'}
                     </TableCell>
-                    <TableCell>{trade?.strategy && trade.strategy.name}</TableCell>
+                    <TableCell>{trade?.strategy?.name}</TableCell>
                   </TableRow>
                 );
               })}
