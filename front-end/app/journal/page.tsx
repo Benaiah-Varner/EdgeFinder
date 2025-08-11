@@ -60,6 +60,9 @@ const STRATEGIES = [
   'Bounce',
   'Bull flag',
   'Break N Retest',
+  "'Fake' Bullish Divergence",
+  'Breakdown',
+  'Reclaim'
 ];
 
 export default function JournalPage() {
@@ -68,6 +71,7 @@ export default function JournalPage() {
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>('All time');
+  const [strategyFilter, setStrategyFilter] = useState<string>('All strategies');
   const { user, token } = useAuth();
   console.log('user ', user);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -241,20 +245,34 @@ export default function JournalPage() {
     }),
   ];
 
-  // Filter trades based on selected date filter
+  // Get unique strategies from trades
+  const uniqueStrategies = [
+    'All strategies',
+    ...Array.from(new Set(trades?.map(trade => trade.strategy?.name).filter(Boolean))),
+  ];
+
+  // Filter trades based on selected date and strategy filters
   const filteredTrades =
     trades?.filter(trade => {
-      if (dateFilter === 'All time') {
-        return true;
+      // Date filter
+      if (dateFilter !== 'All time') {
+        const tradeDate = new Date(trade.entryDate);
+        const filterDate = new Date(dateFilter);
+
+        const dateMatches = (
+          tradeDate.getMonth() === filterDate.getMonth() &&
+          tradeDate.getFullYear() === filterDate.getFullYear()
+        );
+
+        if (!dateMatches) return false;
       }
 
-      const tradeDate = new Date(trade.entryDate);
-      const filterDate = new Date(dateFilter);
+      // Strategy filter
+      if (strategyFilter !== 'All strategies') {
+        return trade.strategy?.name === strategyFilter;
+      }
 
-      return (
-        tradeDate.getMonth() === filterDate.getMonth() &&
-        tradeDate.getFullYear() === filterDate.getFullYear()
-      );
+      return true;
     }) || [];
 
   // Calculate win rate using filtered trades
@@ -264,6 +282,18 @@ export default function JournalPage() {
 
   // Calculate total P/L using filtered trades
   const totalPnL = filteredTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+
+  // Calculate average winner and loser
+  const winningTrades = filteredTrades.filter(trade => trade.pnl > 0);
+  const losingTrades = filteredTrades.filter(trade => trade.pnl < 0);
+  
+  const avgWinner = winningTrades.length > 0 
+    ? winningTrades.reduce((sum, trade) => sum + trade.pnl, 0) / winningTrades.length 
+    : 0;
+  
+  const avgLoser = losingTrades.length > 0 
+    ? losingTrades.reduce((sum, trade) => sum + trade.pnl, 0) / losingTrades.length 
+    : 0;
 
   return (
     <ProtectedRoute>
@@ -285,7 +315,7 @@ export default function JournalPage() {
         </Box>
 
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={3}>
             <Card>
               <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
@@ -304,7 +334,7 @@ export default function JournalPage() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={3}>
             <Card>
               <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
@@ -323,9 +353,47 @@ export default function JournalPage() {
               </CardContent>
             </Card>
           </Grid>
+          <Grid item xs={12} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" component="div" gutterBottom>
+                  Average Winner
+                </Typography>
+                <Typography
+                  variant="h4"
+                  component="div"
+                  color="success.main"
+                >
+                  ${avgWinner.toFixed(2)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Average profit per winning trade
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" component="div" gutterBottom>
+                  Average Loser
+                </Typography>
+                <Typography
+                  variant="h4"
+                  component="div"
+                  color="error.main"
+                >
+                  ${avgLoser.toFixed(2)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Average loss per losing trade
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
 
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
           <FormControl sx={{ minWidth: 200 }}>
             <InputLabel>Filter by Date</InputLabel>
             <Select
@@ -336,6 +404,20 @@ export default function JournalPage() {
               {monthOptions.map(option => (
                 <MenuItem key={option} value={option}>
                   {option}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Filter by Strategy</InputLabel>
+            <Select
+              value={strategyFilter}
+              label="Filter by Strategy"
+              onChange={e => setStrategyFilter(e.target.value)}
+            >
+              {uniqueStrategies.map(strategy => (
+                <MenuItem key={strategy} value={strategy}>
+                  {strategy}
                 </MenuItem>
               ))}
             </Select>
