@@ -13,8 +13,10 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   Grid,
   InputLabel,
+  ListItemText,
   MenuItem,
   Paper,
   Select,
@@ -33,6 +35,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
+import ProfitCalendar from '@/components/ProfitCalendar';
 
 export interface Trade {
   id: string;
@@ -51,6 +54,9 @@ export interface Trade {
   image?: string;
   imageUrl?: string;
   pnl: number;
+  properEntry?: boolean;
+  greenToRed?: boolean;
+  soldTooEarly?: boolean;
 }
 
 const STRATEGIES = [
@@ -62,7 +68,8 @@ const STRATEGIES = [
   'Break N Retest',
   "'Fake' Bullish Divergence",
   'Breakdown',
-  'Reclaim'
+  'Reclaim',
+  'Falling Wedge'
 ];
 
 export default function JournalPage() {
@@ -72,6 +79,7 @@ export default function JournalPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>('All time');
   const [strategyFilter, setStrategyFilter] = useState<string>('All strategies');
+  const [customFilters, setCustomFilters] = useState<string[]>([]);
   const { user, token } = useAuth();
   console.log('user ', user);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -86,6 +94,9 @@ export default function JournalPage() {
     strategy: '',
     description: '',
     image: null as File | null,
+    properEntry: false,
+    greenToRed: false,
+    soldTooEarly: false,
   });
 
   const handleOpen = () => {
@@ -98,15 +109,12 @@ export default function JournalPage() {
 
   useEffect(() => {
     if (user) {
-      console.log('user trades ', user.trades);
       setTrades(user.trades);
     }
   }, [user]);
 
   const handleSubmit = async () => {
     try {
-      console.log('formData before sending:', formData);
-
       // Create FormData for file upload
       const formDataToSend = new FormData();
       formDataToSend.append('symbol', formData.ticker);
@@ -124,6 +132,9 @@ export default function JournalPage() {
       formDataToSend.append('tradeType', 'LONG'); // Default trade type
       formDataToSend.append('description', formData.description);
       formDataToSend.append('strategy', formData.strategy);
+      formDataToSend.append('properEntry', formData.properEntry.toString());
+      formDataToSend.append('greenToRed', formData.greenToRed.toString());
+      formDataToSend.append('soldTooEarly', formData.soldTooEarly.toString());
 
       if (formData.image) {
         formDataToSend.append('image', formData.image);
@@ -144,9 +155,7 @@ export default function JournalPage() {
         throw new Error(errorData.error || 'Failed to create trade');
       }
 
-      const data = await response.json();
-      console.log('Trade created:', data);
-
+      await response.json();
       // Reset form
       setFormData({
         ticker: '',
@@ -157,6 +166,9 @@ export default function JournalPage() {
         strategy: '',
         description: '',
         image: null,
+        properEntry: false,
+        greenToRed: false,
+        soldTooEarly: false,
       });
       setOpen(false);
 
@@ -219,6 +231,14 @@ export default function JournalPage() {
     });
   };
 
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: checked,
+    });
+  };
+
   const handleCheckboxClick = (id: string) => {
     const selectedIndex = selected.indexOf(id);
     let newSelected: string[] = [];
@@ -251,7 +271,7 @@ export default function JournalPage() {
     ...Array.from(new Set(trades?.map(trade => trade.strategy?.name).filter(Boolean))),
   ];
 
-  // Filter trades based on selected date and strategy filters
+  // Filter trades based on selected date, strategy, and custom filters
   const filteredTrades =
     trades?.filter(trade => {
       // Date filter
@@ -269,7 +289,34 @@ export default function JournalPage() {
 
       // Strategy filter
       if (strategyFilter !== 'All strategies') {
-        return trade.strategy?.name === strategyFilter;
+        if (trade.strategy?.name !== strategyFilter) return false;
+      }
+
+      // Custom filters
+      if (customFilters.length > 0) {
+        // Check properEntry filters
+        if (customFilters.includes('properEntry:true') && !trade.properEntry) {
+          return false;
+        }
+        if (customFilters.includes('properEntry:false') && trade.properEntry !== false) {
+          return false;
+        }
+
+        // Check greenToRed filters
+        if (customFilters.includes('greenToRed:true') && !trade.greenToRed) {
+          return false;
+        }
+        if (customFilters.includes('greenToRed:false') && trade.greenToRed !== false) {
+          return false;
+        }
+
+        // Check soldTooEarly filters
+        if (customFilters.includes('soldTooEarly:true') && !trade.soldTooEarly) {
+          return false;
+        }
+        if (customFilters.includes('soldTooEarly:false') && trade.soldTooEarly !== false) {
+          return false;
+        }
       }
 
       return true;
@@ -393,6 +440,8 @@ export default function JournalPage() {
           </Grid>
         </Grid>
 
+        <ProfitCalendar trades={filteredTrades} />
+
         <Box sx={{ mb: 3, display: 'flex', gap: 2 }}>
           <FormControl sx={{ minWidth: 200 }}>
             <InputLabel>Filter by Date</InputLabel>
@@ -420,6 +469,46 @@ export default function JournalPage() {
                   {strategy}
                 </MenuItem>
               ))}
+            </Select>
+          </FormControl>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Custom Filters</InputLabel>
+            <Select
+              multiple
+              value={customFilters}
+              label="Custom Filters"
+              onChange={e => setCustomFilters(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+              renderValue={(selected) => {
+                if (selected.length === 0) {
+                  return 'None';
+                }
+                return `${selected.length} selected`;
+              }}
+            >
+              <MenuItem value="properEntry:true">
+                <Checkbox checked={customFilters.indexOf('properEntry:true') > -1} />
+                <ListItemText primary="Proper entry: True" />
+              </MenuItem>
+              <MenuItem value="properEntry:false">
+                <Checkbox checked={customFilters.indexOf('properEntry:false') > -1} />
+                <ListItemText primary="Proper entry: False" />
+              </MenuItem>
+              <MenuItem value="greenToRed:true">
+                <Checkbox checked={customFilters.indexOf('greenToRed:true') > -1} />
+                <ListItemText primary="Green to red?: True" />
+              </MenuItem>
+              <MenuItem value="greenToRed:false">
+                <Checkbox checked={customFilters.indexOf('greenToRed:false') > -1} />
+                <ListItemText primary="Green to red?: False" />
+              </MenuItem>
+              <MenuItem value="soldTooEarly:true">
+                <Checkbox checked={customFilters.indexOf('soldTooEarly:true') > -1} />
+                <ListItemText primary="Sold too early?: True" />
+              </MenuItem>
+              <MenuItem value="soldTooEarly:false">
+                <Checkbox checked={customFilters.indexOf('soldTooEarly:false') > -1} />
+                <ListItemText primary="Sold too early?: False" />
+              </MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -614,6 +703,42 @@ export default function JournalPage() {
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="Describe your trade setup, entry/exit reasoning, and lessons learned..."
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="properEntry"
+                      checked={formData.properEntry}
+                      onChange={handleCheckboxChange}
+                    />
+                  }
+                  label="Proper Entry?"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="greenToRed"
+                      checked={formData.greenToRed}
+                      onChange={handleCheckboxChange}
+                    />
+                  }
+                  label="Green to red trade?"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="soldTooEarly"
+                      checked={formData.soldTooEarly}
+                      onChange={handleCheckboxChange}
+                    />
+                  }
+                  label="Sold too early?"
                 />
               </Grid>
             </Grid>

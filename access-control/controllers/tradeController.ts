@@ -46,6 +46,9 @@ router.post('/', upload.single('image'), [
   body('exitDate').optional().isISO8601(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
+  body('properEntry').optional().isBoolean(),
+  body('greenToRed').optional().isBoolean(),
+  body('soldTooEarly').optional().isBoolean(),
 ], async (req: AuthRequest, res: Response) => {
   try {
 
@@ -65,6 +68,9 @@ router.post('/', upload.single('image'), [
       exitDate,
       description,
       strategy,
+      properEntry,
+      greenToRed,
+      soldTooEarly,
     } = req.body;
 
     let pnl = null;
@@ -114,6 +120,9 @@ router.post('/', upload.single('image'), [
         description,
         strategyId,
         pnl,
+        properEntry: properEntry !== undefined ? Boolean(properEntry) : null,
+        greenToRed: greenToRed !== undefined ? Boolean(greenToRed) : null,
+        soldTooEarly: soldTooEarly !== undefined ? Boolean(soldTooEarly) : null,
       }
     });
 
@@ -210,6 +219,9 @@ router.put('/:id', [
   body('exitDate').optional().isISO8601(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
+  body('properEntry').optional(),
+  body('greenToRed').optional(),
+  body('soldTooEarly').optional(),
 ], upload.single('image'), async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
@@ -238,6 +250,16 @@ router.put('/:id', [
           updateData[key] = new Date(req.body[key]);
         } else if (key === 'symbol') {
           updateData[key] = req.body[key].toUpperCase();
+        } else if (key === 'properEntry' || key === 'greenToRed') {
+          // Convert to boolean properly, handling string values like "true" or "false"
+          const value = req.body[key];
+          if (typeof value === 'boolean') {
+            updateData[key] = value;
+          } else if (typeof value === 'string') {
+            updateData[key] = value.toLowerCase() === 'true';
+          } else {
+            updateData[key] = Boolean(value);
+          }
         } else {
           updateData[key] = req.body[key];
         }
