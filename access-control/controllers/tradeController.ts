@@ -41,9 +41,11 @@ router.post('/', upload.single('image'), [
   body('entryPrice').toFloat().isFloat({ min: 0 }),
   body('quantity').toInt().isInt({ min: 1 }),
   body('entryDate').isISO8601(),
+  body('entryTime').optional().trim(),
   body('tradeType').optional().isIn(['LONG', 'SHORT']),
   body('exitPrice').optional().toFloat().isFloat({ min: 0 }),
   body('exitDate').optional().isISO8601(),
+  body('exitTime').optional().trim(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
   body('properEntry').optional().isBoolean(),
@@ -63,9 +65,11 @@ router.post('/', upload.single('image'), [
       entryPrice,
       quantity,
       entryDate,
+      entryTime,
       tradeType = 'LONG',
       exitPrice,
       exitDate,
+      exitTime,
       description,
       strategy,
       properEntry,
@@ -105,7 +109,7 @@ router.post('/', upload.single('image'), [
         strategyId = newStrategy.id;
       }
     }
-    console.log('strategyId ', strategyId);
+
     const trade = await prisma.trade.create({
       data: {
         userId: req.user!.id,
@@ -113,9 +117,11 @@ router.post('/', upload.single('image'), [
         entryPrice: parseFloat(entryPrice),
         quantity: parseInt(quantity),
         entryDate: new Date(entryDate),
+        entryTime: entryTime || null,
         tradeType: tradeType,
         exitPrice: exitPrice ? parseFloat(exitPrice) : null,
         exitDate: exitDate ? new Date(exitDate) : null,
+        exitTime: exitTime || null,
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
         description,
         strategyId,
@@ -143,7 +149,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       include: {
         strategy: true
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { entryDate: 'desc' }
     });
 
     const stats = await prisma.trade.aggregate({
@@ -214,9 +220,11 @@ router.put('/:id', [
   body('entryPrice').optional().isFloat({ min: 0 }),
   body('quantity').optional().isInt({ min: 1 }),
   body('entryDate').optional().isISO8601(),
+  body('entryTime').optional().trim(),
   body('tradeType').optional().isIn(['LONG', 'SHORT']),
   body('exitPrice').optional().isFloat({ min: 0 }),
   body('exitDate').optional().isISO8601(),
+  body('exitTime').optional().trim(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
   body('properEntry').optional(),
@@ -248,6 +256,8 @@ router.put('/:id', [
           updateData[key] = parseInt(req.body[key]);
         } else if (key === 'entryDate' || key === 'exitDate') {
           updateData[key] = new Date(req.body[key]);
+        } else if (key === 'entryTime' || key === 'exitTime') {
+          updateData[key] = req.body[key];
         } else if (key === 'symbol') {
           updateData[key] = req.body[key].toUpperCase();
         } else if (key === 'properEntry' || key === 'greenToRed') {

@@ -39,7 +39,7 @@ poetry install
 2. Run the development server:
 ```bash
 poetry run uvicorn main:app --reload
-```
+````
 
 ## API Endpoints
 

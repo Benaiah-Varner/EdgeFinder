@@ -35,6 +35,7 @@ interface MonthData {
 const ProfitCalendar: React.FC<ProfitCalendarProps> = ({ trades }) => {
   const [view, setView] = useState<'month' | 'day'>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   // Calculate monthly P/L data
   const monthlyData = useMemo(() => {
@@ -65,6 +66,25 @@ const ProfitCalendar: React.FC<ProfitCalendarProps> = ({ trades }) => {
       return new Date(`${a.month} 1, ${a.year}`).getMonth() - new Date(`${b.month} 1, ${b.year}`).getMonth();
     });
   }, [trades]);
+
+  // Get all unique years from trades
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    monthlyData.forEach(monthData => years.add(monthData.year));
+    return Array.from(years).sort((a, b) => b - a);
+  }, [monthlyData]);
+
+  // Auto-adjust selected year if current year has no trades
+  React.useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]); // Set to most recent year with trades
+    }
+  }, [availableYears, selectedYear]);
+
+  // Filter monthly data by selected year
+  const filteredMonthlyData = useMemo(() => {
+    return monthlyData.filter(monthData => monthData.year === selectedYear);
+  }, [monthlyData, selectedYear]);
 
   // Calculate daily P/L data for the current month
   const dailyData = useMemo(() => {
@@ -119,6 +139,10 @@ const ProfitCalendar: React.FC<ProfitCalendarProps> = ({ trades }) => {
     });
   };
 
+  const navigateYear = (direction: 'prev' | 'next') => {
+    setSelectedYear(prev => direction === 'prev' ? prev - 1 : prev + 1);
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -156,15 +180,34 @@ const ProfitCalendar: React.FC<ProfitCalendarProps> = ({ trades }) => {
         </Box>
 
         {view === 'month' && (
-          <Grid container spacing={2}>
-            {monthlyData.length === 0 ? (
-              <Grid item xs={12}>
-                <Typography variant="body1" color="text.secondary" textAlign="center">
-                  No trade data available
-                </Typography>
-              </Grid>
-            ) : (
-              monthlyData.map((monthData, index) => (
+          <>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 3 }}>
+              <IconButton
+                onClick={() => navigateYear('prev')}
+                disabled={availableYears.length === 0 || selectedYear <= Math.min(...availableYears)}
+              >
+                <ChevronLeft />
+              </IconButton>
+              <Typography variant="h6" sx={{ mx: 2 }}>
+                {selectedYear}
+              </Typography>
+              <IconButton
+                onClick={() => navigateYear('next')}
+                disabled={availableYears.length === 0 || selectedYear >= Math.max(...availableYears)}
+              >
+                <ChevronRight />
+              </IconButton>
+            </Box>
+
+            <Grid container spacing={2}>
+              {filteredMonthlyData.length === 0 ? (
+                <Grid item xs={12}>
+                  <Typography variant="body1" color="text.secondary" textAlign="center">
+                    No trade data available for {selectedYear}
+                  </Typography>
+                </Grid>
+              ) : (
+                filteredMonthlyData.map((monthData, index) => (
                 <Grid item xs={12} sm={6} md={4} key={index}>
                   <Paper
                     sx={{
@@ -194,6 +237,7 @@ const ProfitCalendar: React.FC<ProfitCalendarProps> = ({ trades }) => {
               ))
             )}
           </Grid>
+          </>
         )}
 
         {view === 'day' && (

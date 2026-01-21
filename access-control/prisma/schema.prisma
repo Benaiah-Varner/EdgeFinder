@@ -29,7 +29,9 @@ model Trade {
   exitPrice   Float?
   quantity    Int
   entryDate   DateTime
+  entryTime   String?
   exitDate    DateTime?
+  exitTime    String?
   tradeType   TradeType @default(LONG)
   imageUrl    String?
   description String?
