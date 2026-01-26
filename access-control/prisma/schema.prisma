@@ -22,28 +22,31 @@ model User {
 }
 
 model Trade {
-  id          String    @id @default(cuid())
-  userId      String
-  symbol      String
-  entryPrice  Float
-  exitPrice   Float?
-  quantity    Int
-  entryDate   DateTime
-  entryTime   String?
-  exitDate    DateTime?
-  exitTime    String?
-  tradeType   TradeType @default(LONG)
-  imageUrl    String?
-  description String?
-  pnl         Float?
-  properEntry Boolean?
-  greenToRed  Boolean?
-  soldTooEarly Boolean?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  strategyId  String?
-  strategy    Strategy? @relation(fields: [strategyId], references: [id])
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String    @id @default(cuid())
+  userId             String
+  symbol             String
+  entryPrice         Float
+  exitPrice          Float?
+  quantity           Int
+  entryDate          DateTime
+  entryTime          String?
+  exitDate           DateTime?
+  exitTime           String?
+  tradeType          TradeType @default(LONG)
+  imageUrl           String?
+  description        String?
+  pnl                Float?
+  properEntry        Boolean?
+  R                  Decimal? @db.Decimal(10, 4)
+  alignedWithTrend   Boolean?
+  properConditions   Boolean?
+  followedTpPlan     Boolean?
+  properSize         Boolean?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  strategyId         String?
+  strategy           Strategy? @relation(fields: [strategyId], references: [id])
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("trades")
 }

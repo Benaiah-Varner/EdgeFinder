@@ -144,8 +144,11 @@ router.get('/user/:id', authenticateToken, async (req: AuthRequest, res: Respons
             description: true,
             imageUrl: true,
             properEntry: true,
-            greenToRed: true,
-            soldTooEarly: true,
+            R: true,
+            alignedWithTrend: true,
+            properConditions: true,
+            followedTpPlan: true,
+            properSize: true,
             createdAt: true,
             updatedAt: true,
             strategy: true,
@@ -154,16 +157,25 @@ router.get('/user/:id', authenticateToken, async (req: AuthRequest, res: Respons
         }
       }
     });
-
+    console.log('user.trades', user?.trades);
+    console.log('user.trades[0].R', typeof user?.trades[user?.trades.length - 1].R);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
+    const safeUser = user && {
+      ...user,
+      trades: user.trades.map(t => ({
+        ...t,
+        // R: t.R?.toString?.() ?? String(t.R), // exact
+        R: t.R?.toNumber?.() ?? Number(t.R), // convenient but float
+      })),
+    };
+    
     res.json({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      trades: user.trades
+      trades: safeUser?.trades
     });
   } catch (error) {
     console.error('Get user error:', error);

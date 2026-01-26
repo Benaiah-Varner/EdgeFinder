@@ -8,10 +8,6 @@ import {
   CardContent,
   Checkbox,
   Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   Grid,
   InputLabel,
@@ -32,6 +28,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import ProfitCalendar from '@/components/ProfitCalendar';
 import AddNewTrade from '@/components/Journal/AddNewTrade';
+import TradeDetailsDialog from '@/components/Journal/TradeDetailsDialog';
 
 export interface Trade {
   id: string;
@@ -52,9 +49,12 @@ export interface Trade {
   image?: string;
   imageUrl?: string;
   pnl: number;
+  R?: number;
   properEntry?: boolean;
-  greenToRed?: boolean;
-  soldTooEarly?: boolean;
+  alignedWithTrend?: boolean;
+  properConditions?: boolean;
+  followedTpPlan?: boolean;
+  properSize?: boolean;
 }
 
 export default function JournalPage() {
@@ -171,19 +171,35 @@ export default function JournalPage() {
           return false;
         }
 
-        // Check greenToRed filters
-        if (customFilters.includes('greenToRed:true') && !trade.greenToRed) {
+        // Check alignedWithTrend filters
+        if (customFilters.includes('alignedWithTrend:true') && !trade.alignedWithTrend) {
           return false;
         }
-        if (customFilters.includes('greenToRed:false') && trade.greenToRed !== false) {
+        if (customFilters.includes('alignedWithTrend:false') && trade.alignedWithTrend !== false) {
           return false;
         }
 
-        // Check soldTooEarly filters
-        if (customFilters.includes('soldTooEarly:true') && !trade.soldTooEarly) {
+        // Check properConditions filters
+        if (customFilters.includes('properConditions:true') && !trade.properConditions) {
           return false;
         }
-        if (customFilters.includes('soldTooEarly:false') && trade.soldTooEarly !== false) {
+        if (customFilters.includes('properConditions:false') && trade.properConditions !== false) {
+          return false;
+        }
+
+        // Check followedTpPlan filters
+        if (customFilters.includes('followedTpPlan:true') && !trade.followedTpPlan) {
+          return false;
+        }
+        if (customFilters.includes('followedTpPlan:false') && trade.followedTpPlan !== false) {
+          return false;
+        }
+
+        // Check properSize filters
+        if (customFilters.includes('properSize:true') && !trade.properSize) {
+          return false;
+        }
+        if (customFilters.includes('properSize:false') && trade.properSize !== false) {
           return false;
         }
       }
@@ -221,7 +237,8 @@ export default function JournalPage() {
   const startIndex = (page - 1) * tradesPerPage;
   const endIndex = startIndex + tradesPerPage;
   const paginatedTrades = filteredTrades.slice(startIndex, endIndex);
-
+  const r = filteredTrades.reduce((sum, trade) => sum + (trade?.R ?? 0), 0);
+  console.log('r', r);
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
@@ -245,8 +262,8 @@ export default function JournalPage() {
           </Button>
         </Box>
 
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={3}>
+        <Grid container spacing={3} sx={{ mb: 4 }} wrap="nowrap">
+          <Grid item xs={false} sx={{ flex: 1, minWidth: 0 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
@@ -265,7 +282,7 @@ export default function JournalPage() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={false} sx={{ flex: 1, minWidth: 0 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
@@ -278,13 +295,10 @@ export default function JournalPage() {
                 >
                   ${totalPnL.toFixed(2)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Total profit/loss across all trades
-                </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={false} sx={{ flex: 1, minWidth: 0 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
@@ -297,13 +311,10 @@ export default function JournalPage() {
                 >
                   ${avgWinner.toFixed(2)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Average profit per winning trade
-                </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={false} sx={{ flex: 1, minWidth: 0 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
@@ -316,8 +327,21 @@ export default function JournalPage() {
                 >
                   ${avgLoser.toFixed(2)}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Average loss per losing trade
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={false} sx={{ flex: 1, minWidth: 0 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" component="div" gutterBottom>
+                  R
+                </Typography>
+                <Typography
+                  variant="h4"
+                  component="div"
+                  color="primary.main"
+                >
+                  {r}
                 </Typography>
               </CardContent>
             </Card>
@@ -377,21 +401,37 @@ export default function JournalPage() {
                 <Checkbox checked={customFilters.indexOf('properEntry:false') > -1} />
                 <ListItemText primary="Proper entry: False" />
               </MenuItem>
-              <MenuItem value="greenToRed:true">
-                <Checkbox checked={customFilters.indexOf('greenToRed:true') > -1} />
-                <ListItemText primary="Green to red?: True" />
+              <MenuItem value="alignedWithTrend:true">
+                <Checkbox checked={customFilters.indexOf('alignedWithTrend:true') > -1} />
+                <ListItemText primary="Aligned with Trend: True" />
               </MenuItem>
-              <MenuItem value="greenToRed:false">
-                <Checkbox checked={customFilters.indexOf('greenToRed:false') > -1} />
-                <ListItemText primary="Green to red?: False" />
+              <MenuItem value="alignedWithTrend:false">
+                <Checkbox checked={customFilters.indexOf('alignedWithTrend:false') > -1} />
+                <ListItemText primary="Aligned with Trend: False" />
               </MenuItem>
-              <MenuItem value="soldTooEarly:true">
-                <Checkbox checked={customFilters.indexOf('soldTooEarly:true') > -1} />
-                <ListItemText primary="Sold too early?: True" />
+              <MenuItem value="properConditions:true">
+                <Checkbox checked={customFilters.indexOf('properConditions:true') > -1} />
+                <ListItemText primary="Proper Conditions: True" />
               </MenuItem>
-              <MenuItem value="soldTooEarly:false">
-                <Checkbox checked={customFilters.indexOf('soldTooEarly:false') > -1} />
-                <ListItemText primary="Sold too early?: False" />
+              <MenuItem value="properConditions:false">
+                <Checkbox checked={customFilters.indexOf('properConditions:false') > -1} />
+                <ListItemText primary="Proper Conditions: False" />
+              </MenuItem>
+              <MenuItem value="followedTpPlan:true">
+                <Checkbox checked={customFilters.indexOf('followedTpPlan:true') > -1} />
+                <ListItemText primary="Followed TP Plan: True" />
+              </MenuItem>
+              <MenuItem value="followedTpPlan:false">
+                <Checkbox checked={customFilters.indexOf('followedTpPlan:false') > -1} />
+                <ListItemText primary="Followed TP Plan: False" />
+              </MenuItem>
+              <MenuItem value="properSize:true">
+                <Checkbox checked={customFilters.indexOf('properSize:true') > -1} />
+                <ListItemText primary="Proper Size: True" />
+              </MenuItem>
+              <MenuItem value="properSize:false">
+                <Checkbox checked={customFilters.indexOf('properSize:false') > -1} />
+                <ListItemText primary="Proper Size: False" />
               </MenuItem>
             </Select>
           </FormControl>
@@ -461,7 +501,7 @@ export default function JournalPage() {
                     }}
                     onClick={() => handleTradeClick(trade)}
                   >
-                    <TableCell padding="checkbox">
+                    <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={selected.indexOf(trade.id) !== -1}
                         onChange={() => handleCheckboxClick(trade.id)}
@@ -508,119 +548,12 @@ export default function JournalPage() {
 
         <AddNewTrade open={open} onClose={handleClose} token={token} />
 
-        <Dialog
+        <TradeDetailsDialog
           open={detailsOpen}
           onClose={handleDetailsClose}
-          maxWidth="md"
-          fullWidth
-        >
-          <DialogTitle>Trade Details</DialogTitle>
-          <DialogContent>
-            {selectedTrade && (
-              <Grid container spacing={3} sx={{ mt: 1 }}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom>
-                    Trade Information
-                  </Typography>
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="body1">
-                      <strong>Ticker:</strong> {selectedTrade.symbol}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Strategy:</strong> {selectedTrade?.strategy?.name}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Entry Price:</strong> $
-                      {selectedTrade.entryPrice.toFixed(2)}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Exit Price:</strong> $
-                      {selectedTrade.exitPrice.toFixed(2)}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Entry Date:</strong>{' '}
-                      {new Date(selectedTrade.entryDate).toLocaleDateString()}
-                    </Typography>
-                    {selectedTrade.entryTime && (
-                      <Typography variant="body1">
-                        <strong>Entry Time:</strong> {selectedTrade.entryTime}
-                      </Typography>
-                    )}
-                    <Typography variant="body1">
-                      <strong>Exit Date:</strong>{' '}
-                      {new Date(selectedTrade.exitDate).toLocaleDateString()}
-                    </Typography>
-                    {selectedTrade.exitTime && (
-                      <Typography variant="body1">
-                        <strong>Exit Time:</strong> {selectedTrade.exitTime}
-                      </Typography>
-                    )}
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color:
-                          selectedTrade.outcome === 'win'
-                            ? 'success.main'
-                            : 'error.main',
-                      }}
-                    >
-                      <strong>Outcome:</strong>{' '}
-                      {selectedTrade.outcome === 'win' ? 'Win' : 'Loss'}
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color:
-                          selectedTrade.outcome === 'win'
-                            ? 'success.main'
-                            : 'error.main',
-                      }}
-                    >
-                      <strong>P&L:</strong> $
-                      {(
-                        selectedTrade.exitPrice - selectedTrade.entryPrice
-                      ).toFixed(2)}
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  {selectedTrade.imageUrl && (
-                    <Box>
-                      <Typography variant="h6" gutterBottom>
-                        Trade Screenshot
-                      </Typography>
-                      <Box
-                        component="img"
-                        src={`http://localhost:3001${selectedTrade.imageUrl}`}
-                        alt="Trade screenshot"
-                        sx={{
-                          width: '100%',
-                          height: 'auto',
-                          maxHeight: 500,
-                          objectFit: 'contain',
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 1,
-                        }}
-                      />
-                    </Box>
-                  )}
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    Description
-                  </Typography>
-                  <Typography variant="body1">
-                    {selectedTrade.description || 'No description provided.'}
-                  </Typography>
-                </Grid>
-              </Grid>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDetailsClose}>Close</Button>
-          </DialogActions>
-        </Dialog>
+          trade={selectedTrade}
+          token={token}
+        />
       </Container>
     </ProtectedRoute>
   );

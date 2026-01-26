@@ -48,9 +48,12 @@ router.post('/', upload.single('image'), [
   body('exitTime').optional().trim(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
+  body('R').optional().toInt().isInt(),
   body('properEntry').optional().isBoolean(),
-  body('greenToRed').optional().isBoolean(),
-  body('soldTooEarly').optional().isBoolean(),
+  body('alignedWithTrend').optional().isBoolean(),
+  body('properConditions').optional().isBoolean(),
+  body('followedTpPlan').optional().isBoolean(),
+  body('properSize').optional().isBoolean(),
 ], async (req: AuthRequest, res: Response) => {
   try {
 
@@ -72,9 +75,12 @@ router.post('/', upload.single('image'), [
       exitTime,
       description,
       strategy,
+      R,
       properEntry,
-      greenToRed,
-      soldTooEarly,
+      alignedWithTrend,
+      properConditions,
+      followedTpPlan,
+      properSize,
     } = req.body;
 
     let pnl = null;
@@ -126,9 +132,12 @@ router.post('/', upload.single('image'), [
         description,
         strategyId,
         pnl,
+        R: R !== undefined ? parseInt(R) : null,
         properEntry: properEntry !== undefined ? Boolean(properEntry) : null,
-        greenToRed: greenToRed !== undefined ? Boolean(greenToRed) : null,
-        soldTooEarly: soldTooEarly !== undefined ? Boolean(soldTooEarly) : null,
+        alignedWithTrend: alignedWithTrend !== undefined ? Boolean(alignedWithTrend) : null,
+        properConditions: properConditions !== undefined ? Boolean(properConditions) : null,
+        followedTpPlan: followedTpPlan !== undefined ? Boolean(followedTpPlan) : null,
+        properSize: properSize !== undefined ? Boolean(properSize) : null,
       }
     });
 
@@ -227,9 +236,12 @@ router.put('/:id', [
   body('exitTime').optional().trim(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
+  body('R').optional().toInt().isInt(),
   body('properEntry').optional(),
-  body('greenToRed').optional(),
-  body('soldTooEarly').optional(),
+  body('alignedWithTrend').optional(),
+  body('properConditions').optional(),
+  body('followedTpPlan').optional(),
+  body('properSize').optional(),
 ], upload.single('image'), async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
@@ -260,7 +272,9 @@ router.put('/:id', [
           updateData[key] = req.body[key];
         } else if (key === 'symbol') {
           updateData[key] = req.body[key].toUpperCase();
-        } else if (key === 'properEntry' || key === 'greenToRed') {
+        } else if (key === 'R') {
+          updateData[key] = parseInt(req.body[key]);
+        } else if (key === 'properEntry' || key === 'alignedWithTrend' || key === 'properConditions' || key === 'followedTpPlan' || key === 'properSize') {
           // Convert to boolean properly, handling string values like "true" or "false"
           const value = req.body[key];
           if (typeof value === 'boolean') {
@@ -270,11 +284,40 @@ router.put('/:id', [
           } else {
             updateData[key] = Boolean(value);
           }
-        } else {
+        } else if (key !== 'strategy') {
+          // Skip strategy here, we'll handle it separately below
           updateData[key] = req.body[key];
         }
       }
     });
+
+    // Handle strategy field separately (it's a relation, not a direct field)
+    if (req.body.strategy !== undefined) {
+      if (req.body.strategy && req.body.strategy.trim()) {
+        let existingStrategy = await prisma.strategy.findFirst({
+          where: {
+            name: req.body.strategy.trim(),
+            userId: req.user!.id
+          }
+        });
+
+        if (existingStrategy) {
+          updateData.strategyId = existingStrategy.id;
+        } else {
+          const newStrategy = await prisma.strategy.create({
+            data: {
+              name: req.body.strategy.trim(),
+              description: `Strategy: ${req.body.strategy.trim()}`,
+              userId: req.user!.id
+            }
+          });
+          updateData.strategyId = newStrategy.id;
+        }
+      } else {
+        // If strategy is empty string, set strategyId to null
+        updateData.strategyId = null;
+      }
+    }
 
     if (req.file) {
       updateData.imageUrl = `/uploads/${req.file.filename}`;
