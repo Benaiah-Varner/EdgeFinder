@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './lib/prisma';
 import authController from './controllers/authController';
 import tradeController from './controllers/tradeController';
 import strategyController from './controllers/strategyController';
@@ -9,7 +9,6 @@ import strategyController from './controllers/strategyController';
 dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
 // Configure CORS to allow requests from frontend

@@ -5,12 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
-const client_1 = require("@prisma/client");
+const prisma_1 = require("../lib/prisma");
 const auth_1 = require("../middleware/auth");
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const router = (0, express_1.Router)();
-const prisma = new client_1.PrismaClient();
 const storage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
@@ -36,23 +35,24 @@ const upload = (0, multer_1.default)({
     }
 });
 router.use(auth_1.authenticateToken);
-router.post('/', [
+router.post('/', upload.single('image'), [
     (0, express_validator_1.body)('symbol').notEmpty().trim(),
-    (0, express_validator_1.body)('entryPrice').isFloat({ min: 0 }),
-    (0, express_validator_1.body)('quantity').isInt({ min: 1 }),
+    (0, express_validator_1.body)('entryPrice').toFloat().isFloat({ min: 0 }),
+    (0, express_validator_1.body)('quantity').toInt().isInt({ min: 1 }),
     (0, express_validator_1.body)('entryDate').isISO8601(),
     (0, express_validator_1.body)('tradeType').optional().isIn(['LONG', 'SHORT']),
-    (0, express_validator_1.body)('exitPrice').optional().isFloat({ min: 0 }),
+    (0, express_validator_1.body)('exitPrice').optional().toFloat().isFloat({ min: 0 }),
     (0, express_validator_1.body)('exitDate').optional().isISO8601(),
     (0, express_validator_1.body)('description').optional().trim(),
-], upload.single('image'), async (req, res) => {
+    (0, express_validator_1.body)('strategy').optional().trim(),
+], async (req, res) => {
     try {
-        console.log('req user ', req.user);
         const errors = (0, express_validator_1.validationResult)(req);
+        console.log('validation errors ', errors.array());
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
-        const { symbol, entryPrice, quantity, entryDate, tradeType = 'LONG', exitPrice, exitDate, description } = req.body;
+        const { symbol, entryPrice, quantity, entryDate, tradeType = 'LONG', exitPrice, exitDate, description, strategy, } = req.body;
         let pnl = null;
         if (exitPrice && exitDate) {
             if (tradeType === 'LONG') {
@@ -62,7 +62,29 @@ router.post('/', [
                 pnl = (parseFloat(entryPrice) - parseFloat(exitPrice)) * parseInt(quantity);
             }
         }
-        const trade = await prisma.trade.create({
+        let strategyId = null;
+        if (strategy && strategy.trim()) {
+            let existingStrategy = await prisma_1.prisma.strategy.findFirst({
+                where: {
+                    name: strategy.trim(),
+                    userId: req.user.id
+                }
+            });
+            if (existingStrategy) {
+                strategyId = existingStrategy.id;
+            }
+            else {
+                const newStrategy = await prisma_1.prisma.strategy.create({
+                    data: {
+                        name: strategy.trim(),
+                        description: `Strategy: ${strategy.trim()}`,
+                        userId: req.user.id
+                    }
+                });
+                strategyId = newStrategy.id;
+            }
+        }
+        const trade = await prisma_1.prisma.trade.create({
             data: {
                 userId: req.user.id,
                 symbol: symbol.toUpperCase(),
@@ -74,6 +96,7 @@ router.post('/', [
                 exitDate: exitDate ? new Date(exitDate) : null,
                 imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
                 description,
+                strategyId,
                 pnl,
             }
         });
@@ -89,11 +112,14 @@ router.post('/', [
 });
 router.get('/', async (req, res) => {
     try {
-        const trades = await prisma.trade.findMany({
+        const trades = await prisma_1.prisma.trade.findMany({
             where: { userId: req.user.id },
-            orderBy: { createdAt: 'desc' }
+            include: {
+                strategy: true
+            },
+            orderBy: { entryDate: 'desc' }
         });
-        const stats = await prisma.trade.aggregate({
+        const stats = await prisma_1.prisma.trade.aggregate({
             where: {
                 userId: req.user.id,
                 pnl: { not: null }
@@ -101,13 +127,13 @@ router.get('/', async (req, res) => {
             _count: { id: true },
             _sum: { pnl: true },
         });
-        const winningTrades = await prisma.trade.count({
+        const winningTrades = await prisma_1.prisma.trade.count({
             where: {
                 userId: req.user.id,
                 pnl: { gt: 0 }
             }
         });
-        const losingTrades = await prisma.trade.count({
+        const losingTrades = await prisma_1.prisma.trade.count({
             where: {
                 userId: req.user.id,
                 pnl: { lt: 0 }
@@ -116,7 +142,7 @@ router.get('/', async (req, res) => {
         const totalTrades = stats._count.id || 0;
         const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
         const avgWin = winningTrades > 0 ?
-            await prisma.trade.aggregate({
+            await prisma_1.prisma.trade.aggregate({
                 where: {
                     userId: req.user.id,
                     pnl: { gt: 0 }
@@ -124,7 +150,7 @@ router.get('/', async (req, res) => {
                 _avg: { pnl: true }
             }).then((result) => result._avg.pnl || 0) : 0;
         const avgLoss = losingTrades > 0 ?
-            await prisma.trade.aggregate({
+            await prisma_1.prisma.trade.aggregate({
                 where: {
                     userId: req.user.id,
                     pnl: { lt: 0 }
@@ -158,6 +184,7 @@ router.put('/:id', [
     (0, express_validator_1.body)('exitPrice').optional().isFloat({ min: 0 }),
     (0, express_validator_1.body)('exitDate').optional().isISO8601(),
     (0, express_validator_1.body)('description').optional().trim(),
+    (0, express_validator_1.body)('strategy').optional().trim(),
 ], upload.single('image'), async (req, res) => {
     try {
         const errors = (0, express_validator_1.validationResult)(req);
@@ -166,14 +193,27 @@ router.put('/:id', [
         }
         const { id } = req.params;
         const updateData = {};
-        const existingTrade = await prisma.trade.findFirst({
+        const existingTrade = await prisma_1.prisma.trade.findFirst({
             where: { id, userId: req.user.id }
         });
         if (!existingTrade) {
             return res.status(404).json({ error: 'Trade not found' });
         }
+        const updatableTradeFields = new Set([
+            'symbol',
+            'entryPrice',
+            'quantity',
+            'entryDate',
+            'tradeType',
+            'exitPrice',
+            'exitDate',
+            'description',
+        ]);
         Object.keys(req.body).forEach(key => {
             if (req.body[key] !== undefined) {
+                if (!updatableTradeFields.has(key) && key !== 'strategy') {
+                    return;
+                }
                 if (key === 'entryPrice' || key === 'exitPrice') {
                     updateData[key] = parseFloat(req.body[key]);
                 }
@@ -186,11 +226,39 @@ router.put('/:id', [
                 else if (key === 'symbol') {
                     updateData[key] = req.body[key].toUpperCase();
                 }
-                else {
+                else if (key !== 'strategy') {
                     updateData[key] = req.body[key];
                 }
             }
         });
+        // Handle strategy field separately (it's a relation, not a direct field)
+        if (req.body.strategy !== undefined) {
+            if (req.body.strategy && req.body.strategy.trim()) {
+                let existingStrategy = await prisma_1.prisma.strategy.findFirst({
+                    where: {
+                        name: req.body.strategy.trim(),
+                        userId: req.user.id
+                    }
+                });
+                if (existingStrategy) {
+                    updateData.strategyId = existingStrategy.id;
+                }
+                else {
+                    const newStrategy = await prisma_1.prisma.strategy.create({
+                        data: {
+                            name: req.body.strategy.trim(),
+                            description: `Strategy: ${req.body.strategy.trim()}`,
+                            userId: req.user.id
+                        }
+                    });
+                    updateData.strategyId = newStrategy.id;
+                }
+            }
+            else {
+                // If strategy is empty string, set strategyId to null
+                updateData.strategyId = null;
+            }
+        }
         if (req.file) {
             updateData.imageUrl = `/uploads/${req.file.filename}`;
         }
@@ -207,7 +275,7 @@ router.put('/:id', [
                 updateData.pnl = (finalEntryPrice - finalExitPrice) * finalQuantity;
             }
         }
-        const trade = await prisma.trade.update({
+        const trade = await prisma_1.prisma.trade.update({
             where: { id },
             data: updateData
         });
@@ -224,13 +292,13 @@ router.put('/:id', [
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const existingTrade = await prisma.trade.findFirst({
+        const existingTrade = await prisma_1.prisma.trade.findFirst({
             where: { id, userId: req.user.id }
         });
         if (!existingTrade) {
             return res.status(404).json({ error: 'Trade not found' });
         }
-        await prisma.trade.delete({
+        await prisma_1.prisma.trade.delete({
             where: { id }
         });
         res.json({ message: 'Trade deleted successfully' });

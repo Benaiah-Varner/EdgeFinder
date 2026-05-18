@@ -11,7 +11,6 @@ import {
   FormControl,
   Grid,
   InputLabel,
-  ListItemText,
   MenuItem,
   Pagination,
   Paper,
@@ -37,8 +36,6 @@ export interface Trade {
   exitPrice: number;
   entryDate: Date;
   exitDate: Date;
-  entryTime?: string;
-  exitTime?: string;
   outcome: 'win' | 'loss';
   strategy: {
     id: string;
@@ -49,12 +46,6 @@ export interface Trade {
   image?: string;
   imageUrl?: string;
   pnl: number;
-  R?: number;
-  properEntry?: boolean;
-  alignedWithTrend?: boolean;
-  properConditions?: boolean;
-  followedTpPlan?: boolean;
-  properSize?: boolean;
 }
 
 export default function JournalPage() {
@@ -64,7 +55,6 @@ export default function JournalPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>('All time');
   const [strategyFilter, setStrategyFilter] = useState<string>('All strategies');
-  const [customFilters, setCustomFilters] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [tradesPerPage] = useState(20);
   const { user, token } = useAuth();
@@ -88,7 +78,7 @@ export default function JournalPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [dateFilter, strategyFilter, customFilters]);
+  }, [dateFilter, strategyFilter]);
 
   const handleTradeClick = (trade: Trade) => {
     setSelectedTrade(trade);
@@ -140,7 +130,7 @@ export default function JournalPage() {
     ...Array.from(new Set(trades?.map(trade => trade.strategy?.name).filter(Boolean))),
   ];
 
-  // Filter trades based on selected date, strategy, and custom filters
+  // Filter trades based on selected date and strategy
   const filteredTrades =
     trades?.filter(trade => {
       // Date filter
@@ -159,49 +149,6 @@ export default function JournalPage() {
       // Strategy filter
       if (strategyFilter !== 'All strategies') {
         if (trade.strategy?.name !== strategyFilter) return false;
-      }
-
-      // Custom filters
-      if (customFilters.length > 0) {
-        // Check properEntry filters
-        if (customFilters.includes('properEntry:true') && !trade.properEntry) {
-          return false;
-        }
-        if (customFilters.includes('properEntry:false') && trade.properEntry !== false) {
-          return false;
-        }
-
-        // Check alignedWithTrend filters
-        if (customFilters.includes('alignedWithTrend:true') && !trade.alignedWithTrend) {
-          return false;
-        }
-        if (customFilters.includes('alignedWithTrend:false') && trade.alignedWithTrend !== false) {
-          return false;
-        }
-
-        // Check properConditions filters
-        if (customFilters.includes('properConditions:true') && !trade.properConditions) {
-          return false;
-        }
-        if (customFilters.includes('properConditions:false') && trade.properConditions !== false) {
-          return false;
-        }
-
-        // Check followedTpPlan filters
-        if (customFilters.includes('followedTpPlan:true') && !trade.followedTpPlan) {
-          return false;
-        }
-        if (customFilters.includes('followedTpPlan:false') && trade.followedTpPlan !== false) {
-          return false;
-        }
-
-        // Check properSize filters
-        if (customFilters.includes('properSize:true') && !trade.properSize) {
-          return false;
-        }
-        if (customFilters.includes('properSize:false') && trade.properSize !== false) {
-          return false;
-        }
       }
 
       return true;
@@ -237,8 +184,7 @@ export default function JournalPage() {
   const startIndex = (page - 1) * tradesPerPage;
   const endIndex = startIndex + tradesPerPage;
   const paginatedTrades = filteredTrades.slice(startIndex, endIndex);
-  const r = filteredTrades.reduce((sum, trade) => sum + (trade?.R ?? 0), 0);
-  console.log('r', r);
+
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
@@ -330,22 +276,6 @@ export default function JournalPage() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={false} sx={{ flex: 1, minWidth: 0 }}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" component="div" gutterBottom>
-                  R
-                </Typography>
-                <Typography
-                  variant="h4"
-                  component="div"
-                  color="primary.main"
-                >
-                  {r}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
         </Grid>
 
         <ProfitCalendar trades={filteredTrades} />
@@ -377,62 +307,6 @@ export default function JournalPage() {
                   {strategy}
                 </MenuItem>
               ))}
-            </Select>
-          </FormControl>
-          <FormControl sx={{ minWidth: 200 }}>
-            <InputLabel>Custom Filters</InputLabel>
-            <Select
-              multiple
-              value={customFilters}
-              label="Custom Filters"
-              onChange={e => setCustomFilters(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
-              renderValue={(selected) => {
-                if (selected.length === 0) {
-                  return 'None';
-                }
-                return `${selected.length} selected`;
-              }}
-            >
-              <MenuItem value="properEntry:true">
-                <Checkbox checked={customFilters.indexOf('properEntry:true') > -1} />
-                <ListItemText primary="Proper entry: True" />
-              </MenuItem>
-              <MenuItem value="properEntry:false">
-                <Checkbox checked={customFilters.indexOf('properEntry:false') > -1} />
-                <ListItemText primary="Proper entry: False" />
-              </MenuItem>
-              <MenuItem value="alignedWithTrend:true">
-                <Checkbox checked={customFilters.indexOf('alignedWithTrend:true') > -1} />
-                <ListItemText primary="Aligned with Trend: True" />
-              </MenuItem>
-              <MenuItem value="alignedWithTrend:false">
-                <Checkbox checked={customFilters.indexOf('alignedWithTrend:false') > -1} />
-                <ListItemText primary="Aligned with Trend: False" />
-              </MenuItem>
-              <MenuItem value="properConditions:true">
-                <Checkbox checked={customFilters.indexOf('properConditions:true') > -1} />
-                <ListItemText primary="Proper Conditions: True" />
-              </MenuItem>
-              <MenuItem value="properConditions:false">
-                <Checkbox checked={customFilters.indexOf('properConditions:false') > -1} />
-                <ListItemText primary="Proper Conditions: False" />
-              </MenuItem>
-              <MenuItem value="followedTpPlan:true">
-                <Checkbox checked={customFilters.indexOf('followedTpPlan:true') > -1} />
-                <ListItemText primary="Followed TP Plan: True" />
-              </MenuItem>
-              <MenuItem value="followedTpPlan:false">
-                <Checkbox checked={customFilters.indexOf('followedTpPlan:false') > -1} />
-                <ListItemText primary="Followed TP Plan: False" />
-              </MenuItem>
-              <MenuItem value="properSize:true">
-                <Checkbox checked={customFilters.indexOf('properSize:true') > -1} />
-                <ListItemText primary="Proper Size: True" />
-              </MenuItem>
-              <MenuItem value="properSize:false">
-                <Checkbox checked={customFilters.indexOf('properSize:false') > -1} />
-                <ListItemText primary="Proper Size: False" />
-              </MenuItem>
             </Select>
           </FormControl>
         </Box>
@@ -471,9 +345,7 @@ export default function JournalPage() {
                 <TableCell>Entry Price</TableCell>
                 <TableCell>Exit Price</TableCell>
                 <TableCell>Entry Date</TableCell>
-                <TableCell>Entry Time</TableCell>
                 <TableCell>Exit Date</TableCell>
-                <TableCell>Exit Time</TableCell>
                 <TableCell>Outcome</TableCell>
                 <TableCell>Strategy</TableCell>
               </TableRow>
@@ -513,11 +385,9 @@ export default function JournalPage() {
                     <TableCell>
                       {new Date(trade.entryDate).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>{trade.entryTime || '-'}</TableCell>
                     <TableCell>
                       {new Date(trade.exitDate).toLocaleDateString()}
                     </TableCell>
-                    <TableCell>{trade.exitTime || '-'}</TableCell>
                     <TableCell
                       sx={{
                         color:

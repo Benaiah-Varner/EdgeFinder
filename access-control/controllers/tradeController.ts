@@ -1,12 +1,12 @@
 import { Router, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import multer from 'multer';
 import path from 'path';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -41,19 +41,11 @@ router.post('/', upload.single('image'), [
   body('entryPrice').toFloat().isFloat({ min: 0 }),
   body('quantity').toInt().isInt({ min: 1 }),
   body('entryDate').isISO8601(),
-  body('entryTime').optional().trim(),
   body('tradeType').optional().isIn(['LONG', 'SHORT']),
   body('exitPrice').optional().toFloat().isFloat({ min: 0 }),
   body('exitDate').optional().isISO8601(),
-  body('exitTime').optional().trim(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
-  body('R').optional().toInt().isInt(),
-  body('properEntry').optional().isBoolean(),
-  body('alignedWithTrend').optional().isBoolean(),
-  body('properConditions').optional().isBoolean(),
-  body('followedTpPlan').optional().isBoolean(),
-  body('properSize').optional().isBoolean(),
 ], async (req: AuthRequest, res: Response) => {
   try {
 
@@ -68,19 +60,11 @@ router.post('/', upload.single('image'), [
       entryPrice,
       quantity,
       entryDate,
-      entryTime,
       tradeType = 'LONG',
       exitPrice,
       exitDate,
-      exitTime,
       description,
       strategy,
-      R,
-      properEntry,
-      alignedWithTrend,
-      properConditions,
-      followedTpPlan,
-      properSize,
     } = req.body;
 
     let pnl = null;
@@ -123,21 +107,13 @@ router.post('/', upload.single('image'), [
         entryPrice: parseFloat(entryPrice),
         quantity: parseInt(quantity),
         entryDate: new Date(entryDate),
-        entryTime: entryTime || null,
         tradeType: tradeType,
         exitPrice: exitPrice ? parseFloat(exitPrice) : null,
         exitDate: exitDate ? new Date(exitDate) : null,
-        exitTime: exitTime || null,
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
         description,
         strategyId,
         pnl,
-        R: R !== undefined ? parseInt(R) : null,
-        properEntry: properEntry !== undefined ? Boolean(properEntry) : null,
-        alignedWithTrend: alignedWithTrend !== undefined ? Boolean(alignedWithTrend) : null,
-        properConditions: properConditions !== undefined ? Boolean(properConditions) : null,
-        followedTpPlan: followedTpPlan !== undefined ? Boolean(followedTpPlan) : null,
-        properSize: properSize !== undefined ? Boolean(properSize) : null,
       }
     });
 
@@ -229,19 +205,11 @@ router.put('/:id', [
   body('entryPrice').optional().isFloat({ min: 0 }),
   body('quantity').optional().isInt({ min: 1 }),
   body('entryDate').optional().isISO8601(),
-  body('entryTime').optional().trim(),
   body('tradeType').optional().isIn(['LONG', 'SHORT']),
   body('exitPrice').optional().isFloat({ min: 0 }),
   body('exitDate').optional().isISO8601(),
-  body('exitTime').optional().trim(),
   body('description').optional().trim(),
   body('strategy').optional().trim(),
-  body('R').optional().toInt().isInt(),
-  body('properEntry').optional(),
-  body('alignedWithTrend').optional(),
-  body('properConditions').optional(),
-  body('followedTpPlan').optional(),
-  body('properSize').optional(),
 ], upload.single('image'), async (req: AuthRequest, res: Response) => {
   try {
     const errors = validationResult(req);
@@ -260,32 +228,32 @@ router.put('/:id', [
       return res.status(404).json({ error: 'Trade not found' });
     }
 
+    const updatableTradeFields = new Set([
+      'symbol',
+      'entryPrice',
+      'quantity',
+      'entryDate',
+      'tradeType',
+      'exitPrice',
+      'exitDate',
+      'description',
+    ]);
+
     Object.keys(req.body).forEach(key => {
       if (req.body[key] !== undefined) {
+        if (!updatableTradeFields.has(key) && key !== 'strategy') {
+          return;
+        }
+
         if (key === 'entryPrice' || key === 'exitPrice') {
           updateData[key] = parseFloat(req.body[key]);
         } else if (key === 'quantity') {
           updateData[key] = parseInt(req.body[key]);
         } else if (key === 'entryDate' || key === 'exitDate') {
           updateData[key] = new Date(req.body[key]);
-        } else if (key === 'entryTime' || key === 'exitTime') {
-          updateData[key] = req.body[key];
         } else if (key === 'symbol') {
           updateData[key] = req.body[key].toUpperCase();
-        } else if (key === 'R') {
-          updateData[key] = parseInt(req.body[key]);
-        } else if (key === 'properEntry' || key === 'alignedWithTrend' || key === 'properConditions' || key === 'followedTpPlan' || key === 'properSize') {
-          // Convert to boolean properly, handling string values like "true" or "false"
-          const value = req.body[key];
-          if (typeof value === 'boolean') {
-            updateData[key] = value;
-          } else if (typeof value === 'string') {
-            updateData[key] = value.toLowerCase() === 'true';
-          } else {
-            updateData[key] = Boolean(value);
-          }
         } else if (key !== 'strategy') {
-          // Skip strategy here, we'll handle it separately below
           updateData[key] = req.body[key];
         }
       }

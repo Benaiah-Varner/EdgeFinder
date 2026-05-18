@@ -22,16 +22,10 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
 const STRATEGIES = [
-  'Breakout',
-  'Bullish Divergence',
   'Reject',
-  'Bounce',
-  'Bull flag',
   'Break N Retest',
-  "'Fake' Bullish Divergence",
-  'Breakdown',
-  'Reclaim',
-  'Falling Wedge'
+  'Lower high',
+  'Bounce'
 ];
 
 interface AddNewTradeProps {
@@ -47,18 +41,10 @@ const AddNewTrade: React.FC<AddNewTradeProps> = ({ open, onClose, token }) => {
     entryPrice: '',
     exitPrice: '',
     entryDate: null as Date | null,
-    entryTime: '',
     exitDate: null as Date | null,
-    exitTime: '',
     strategy: '',
     description: '',
     image: null as File | null,
-    R: '',
-    properEntry: '',
-    alignedWithTrend: '',
-    properConditions: '',
-    followedTpPlan: '',
-    properSize: '',
   });
 
   const handleInputChange = (
@@ -110,39 +96,13 @@ const AddNewTrade: React.FC<AddNewTradeProps> = ({ open, onClose, token }) => {
         'entryDate',
         formData.entryDate?.toISOString() || new Date().toISOString()
       );
-      if (formData.entryTime) {
-        formDataToSend.append('entryTime', formData.entryTime);
-      }
       formDataToSend.append(
         'exitDate',
         formData.exitDate?.toISOString() || new Date().toISOString()
       );
-      if (formData.exitTime) {
-        formDataToSend.append('exitTime', formData.exitTime);
-      }
       formDataToSend.append('tradeType', 'LONG'); // Default trade type
       formDataToSend.append('description', formData.description);
       formDataToSend.append('strategy', formData.strategy);
-
-      // Add new fields
-      if (formData.R) {
-        formDataToSend.append('R', formData.R);
-      }
-      if (formData.properEntry) {
-        formDataToSend.append('properEntry', (formData.properEntry === 'yes').toString());
-      }
-      if (formData.alignedWithTrend) {
-        formDataToSend.append('alignedWithTrend', (formData.alignedWithTrend === 'yes').toString());
-      }
-      if (formData.properConditions) {
-        formDataToSend.append('properConditions', (formData.properConditions === 'yes').toString());
-      }
-      if (formData.followedTpPlan) {
-        formDataToSend.append('followedTpPlan', (formData.followedTpPlan === 'yes').toString());
-      }
-      if (formData.properSize) {
-        formDataToSend.append('properSize', (formData.properSize === 'yes').toString());
-      }
 
       if (formData.image) {
         formDataToSend.append('image', formData.image);
@@ -170,18 +130,10 @@ const AddNewTrade: React.FC<AddNewTradeProps> = ({ open, onClose, token }) => {
         entryPrice: '',
         exitPrice: '',
         entryDate: null,
-        entryTime: '',
         exitDate: null,
-        exitTime: '',
         strategy: '',
         description: '',
         image: null,
-        R: '',
-        properEntry: '',
-        alignedWithTrend: '',
-        properConditions: '',
-        followedTpPlan: '',
-        properSize: '',
       });
       onClose();
 
@@ -257,26 +209,6 @@ const AddNewTrade: React.FC<AddNewTradeProps> = ({ open, onClose, token }) => {
               />
             </LocalizationProvider>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              name="entryTime"
-              label="Entry Time"
-              placeholder="e.g., 09:30"
-              fullWidth
-              value={formData.entryTime}
-              onChange={handleInputChange}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              name="exitTime"
-              label="Exit Time"
-              placeholder="e.g., 15:45"
-              fullWidth
-              value={formData.exitTime}
-              onChange={handleInputChange}
-            />
-          </Grid>
           <Grid item xs={12}>
             <FormControl fullWidth>
               <InputLabel>Strategy</InputLabel>
@@ -323,87 +255,6 @@ const AddNewTrade: React.FC<AddNewTradeProps> = ({ open, onClose, token }) => {
               onChange={handleInputChange}
               placeholder="Describe your trade setup, entry/exit reasoning, and lessons learned..."
             />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              name="R"
-              label="R (Risk/Reward)"
-              type="number"
-              fullWidth
-              value={formData.R}
-              onChange={handleInputChange}
-              placeholder="e.g., 2"
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Proper Entry?</InputLabel>
-              <Select
-                name="properEntry"
-                value={formData.properEntry}
-                label="Proper Entry?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Aligned with Trend?</InputLabel>
-              <Select
-                name="alignedWithTrend"
-                value={formData.alignedWithTrend}
-                label="Aligned with Trend?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Proper Conditions?</InputLabel>
-              <Select
-                name="properConditions"
-                value={formData.properConditions}
-                label="Proper Conditions?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Followed TP Plan?</InputLabel>
-              <Select
-                name="followedTpPlan"
-                value={formData.followedTpPlan}
-                label="Followed TP Plan?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Proper Size?</InputLabel>
-              <Select
-                name="properSize"
-                value={formData.properSize}
-                label="Proper Size?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
           </Grid>
         </Grid>
       </DialogContent>

@@ -2,12 +2,11 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { AuthRequest } from '../middleware/auth';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 const generateToken = (userId: string, email: string): string => {
   return jwt.sign(
@@ -80,7 +79,8 @@ router.post('/login', [
     }
 
     const { email, password } = req.body;
-
+    console.log('email', email);
+    console.log('password', password);
     const user = await prisma.user.findUnique({
       where: { email }
     });
@@ -109,7 +109,11 @@ router.post('/login', [
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 
@@ -136,19 +140,11 @@ router.get('/user/:id', authenticateToken, async (req: AuthRequest, res: Respons
             exitPrice: true,
             quantity: true,
             entryDate: true,
-            entryTime: true,
             exitDate: true,
-            exitTime: true,
             tradeType: true,
             pnl: true,
             description: true,
             imageUrl: true,
-            properEntry: true,
-            R: true,
-            alignedWithTrend: true,
-            properConditions: true,
-            followedTpPlan: true,
-            properSize: true,
             createdAt: true,
             updatedAt: true,
             strategy: true,
@@ -157,25 +153,16 @@ router.get('/user/:id', authenticateToken, async (req: AuthRequest, res: Respons
         }
       }
     });
-    console.log('user.trades', user?.trades);
-    console.log('user.trades[0].R', typeof user?.trades[user?.trades.length - 1].R);
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const safeUser = user && {
-      ...user,
-      trades: user.trades.map(t => ({
-        ...t,
-        // R: t.R?.toString?.() ?? String(t.R), // exact
-        R: t.R?.toNumber?.() ?? Number(t.R), // convenient but float
-      })),
-    };
-    
+
     res.json({
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      trades: safeUser?.trades
+      trades: user.trades
     });
   } catch (error) {
     console.error('Get user error:', error);

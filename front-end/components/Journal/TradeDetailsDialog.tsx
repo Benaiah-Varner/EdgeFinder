@@ -25,18 +25,9 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { Trade } from '@/app/journal/page';
 
 const STRATEGIES = [
-  'Breakout',
-  'Bullish Divergence',
   'Reject',
-  'Bounce',
-  'Bull flag',
-  'Break N Retest',
-  "'Fake' Bullish Divergence",
-  'Breakdown',
-  'Reclaim',
-  'Falling Wedge',
+  'Break N Retest'
 ];
-
 interface TradeDetailsDialogProps {
   open: boolean;
   onClose: () => void;
@@ -56,18 +47,10 @@ export default function TradeDetailsDialog({
     entryPrice: '',
     exitPrice: '',
     entryDate: null as Date | null,
-    entryTime: '',
     exitDate: null as Date | null,
-    exitTime: '',
     strategy: '',
     description: '',
     image: null as File | null,
-    R: '',
-    properEntry: '',
-    alignedWithTrend: '',
-    properConditions: '',
-    followedTpPlan: '',
-    properSize: '',
   });
 
   // Initialize form data when trade changes
@@ -78,18 +61,10 @@ export default function TradeDetailsDialog({
         entryPrice: trade.entryPrice?.toString() || '',
         exitPrice: trade.exitPrice?.toString() || '',
         entryDate: trade.entryDate ? new Date(trade.entryDate) : null,
-        entryTime: trade.entryTime || '',
         exitDate: trade.exitDate ? new Date(trade.exitDate) : null,
-        exitTime: trade.exitTime || '',
         strategy: trade.strategy?.name || '',
         description: trade.description || '',
         image: null,
-        R: trade.R?.toString() || '',
-        properEntry: trade.properEntry === true ? 'yes' : trade.properEntry === false ? 'no' : '',
-        alignedWithTrend: trade.alignedWithTrend === true ? 'yes' : trade.alignedWithTrend === false ? 'no' : '',
-        properConditions: trade.properConditions === true ? 'yes' : trade.properConditions === false ? 'no' : '',
-        followedTpPlan: trade.followedTpPlan === true ? 'yes' : trade.followedTpPlan === false ? 'no' : '',
-        properSize: trade.properSize === true ? 'yes' : trade.properSize === false ? 'no' : '',
       });
     }
   }, [trade]);
@@ -144,39 +119,13 @@ export default function TradeDetailsDialog({
         'entryDate',
         formData.entryDate?.toISOString() || new Date().toISOString()
       );
-      if (formData.entryTime) {
-        formDataToSend.append('entryTime', formData.entryTime);
-      }
       formDataToSend.append(
         'exitDate',
         formData.exitDate?.toISOString() || new Date().toISOString()
       );
-      if (formData.exitTime) {
-        formDataToSend.append('exitTime', formData.exitTime);
-      }
       formDataToSend.append('tradeType', 'LONG');
       formDataToSend.append('description', formData.description);
       formDataToSend.append('strategy', formData.strategy);
-
-      // Add new fields
-      if (formData.R) {
-        formDataToSend.append('R', formData.R);
-      }
-      if (formData.properEntry) {
-        formDataToSend.append('properEntry', (formData.properEntry === 'yes').toString());
-      }
-      if (formData.alignedWithTrend) {
-        formDataToSend.append('alignedWithTrend', (formData.alignedWithTrend === 'yes').toString());
-      }
-      if (formData.properConditions) {
-        formDataToSend.append('properConditions', (formData.properConditions === 'yes').toString());
-      }
-      if (formData.followedTpPlan) {
-        formDataToSend.append('followedTpPlan', (formData.followedTpPlan === 'yes').toString());
-      }
-      if (formData.properSize) {
-        formDataToSend.append('properSize', (formData.properSize === 'yes').toString());
-      }
 
       if (formData.image) {
         formDataToSend.append('image', formData.image);
@@ -209,7 +158,7 @@ export default function TradeDetailsDialog({
   };
 
   if (!trade) return null;
-
+  console.log('trade.image url ', trade.imageUrl)
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -279,16 +228,6 @@ export default function TradeDetailsDialog({
             </LocalizationProvider>
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField
-              name="entryTime"
-              label="Entry Time"
-              placeholder="e.g., 09:30"
-              fullWidth
-              value={formData.entryTime}
-              onChange={handleInputChange}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
             <LocalizationProvider dateAdapter={AdapterDateFns}>
               <DatePicker
                 label="Exit Date"
@@ -297,16 +236,6 @@ export default function TradeDetailsDialog({
                 slotProps={{ textField: { fullWidth: true } }}
               />
             </LocalizationProvider>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              name="exitTime"
-              label="Exit Time"
-              placeholder="e.g., 15:45"
-              fullWidth
-              value={formData.exitTime}
-              onChange={handleInputChange}
-            />
           </Grid>
           <Grid item xs={12}>
             <TextField
@@ -360,87 +289,6 @@ export default function TradeDetailsDialog({
                 />
               </Button>
             </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              name="R"
-              label="R (Risk/Reward)"
-              type="number"
-              fullWidth
-              value={formData.R}
-              onChange={handleInputChange}
-              placeholder="e.g., 2"
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Proper Entry?</InputLabel>
-              <Select
-                name="properEntry"
-                value={formData.properEntry}
-                label="Proper Entry?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Aligned with Trend?</InputLabel>
-              <Select
-                name="alignedWithTrend"
-                value={formData.alignedWithTrend}
-                label="Aligned with Trend?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Proper Conditions?</InputLabel>
-              <Select
-                name="properConditions"
-                value={formData.properConditions}
-                label="Proper Conditions?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Followed TP Plan?</InputLabel>
-              <Select
-                name="followedTpPlan"
-                value={formData.followedTpPlan}
-                label="Followed TP Plan?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth>
-              <InputLabel>Proper Size?</InputLabel>
-              <Select
-                name="properSize"
-                value={formData.properSize}
-                label="Proper Size?"
-                onChange={handleSelectChange}
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </Select>
-            </FormControl>
           </Grid>
         </Grid>
         </DialogContent>

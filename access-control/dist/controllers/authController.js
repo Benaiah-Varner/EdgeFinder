@@ -7,10 +7,9 @@ const express_1 = require("express");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const express_validator_1 = require("express-validator");
-const client_1 = require("@prisma/client");
+const prisma_1 = require("../lib/prisma");
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
-const prisma = new client_1.PrismaClient();
 const generateToken = (userId, email) => {
     return jsonwebtoken_1.default.sign({ userId, email }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
@@ -26,14 +25,14 @@ router.post('/register', [
             return res.status(400).json({ errors: errors.array() });
         }
         const { email, password, firstName, lastName } = req.body;
-        const existingUser = await prisma.user.findUnique({
+        const existingUser = await prisma_1.prisma.user.findUnique({
             where: { email }
         });
         if (existingUser) {
             return res.status(400).json({ error: 'User already exists with this email' });
         }
         const hashedPassword = await bcryptjs_1.default.hash(password, 12);
-        const user = await prisma.user.create({
+        const user = await prisma_1.prisma.user.create({
             data: {
                 email,
                 password: hashedPassword,
@@ -70,7 +69,9 @@ router.post('/login', [
             return res.status(400).json({ errors: errors.array() });
         }
         const { email, password } = req.body;
-        const user = await prisma.user.findUnique({
+        console.log('email', email);
+        console.log('password', password);
+        const user = await prisma_1.prisma.user.findUnique({
             where: { email }
         });
         if (!user) {
@@ -94,7 +95,11 @@ router.post('/login', [
     }
     catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+        res.status(500).json({
+            error: 'Internal server error',
+            details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        });
     }
 });
 router.get('/user/:id', auth_1.authenticateToken, async (req, res) => {
@@ -104,7 +109,7 @@ router.get('/user/:id', auth_1.authenticateToken, async (req, res) => {
         if (req.user.id !== id) {
             return res.status(403).json({ error: 'Access denied' });
         }
-        const user = await prisma.user.findUnique({
+        const user = await prisma_1.prisma.user.findUnique({
             where: { id },
             select: {
                 email: true,
@@ -124,7 +129,9 @@ router.get('/user/:id', auth_1.authenticateToken, async (req, res) => {
                         description: true,
                         imageUrl: true,
                         createdAt: true,
-                        updatedAt: true
+                        updatedAt: true,
+                        strategy: true,
+                        strategyId: true,
                     }
                 }
             }

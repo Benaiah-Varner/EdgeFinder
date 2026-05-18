@@ -35,9 +35,7 @@ const TradeTable = ({trades, selected, setSelected, handleTradeClick, handleChec
           <TableCell>Entry Price</TableCell>
           <TableCell>Exit Price</TableCell>
           <TableCell>Entry Date</TableCell>
-          <TableCell>Entry Time</TableCell>
           <TableCell>Exit Date</TableCell>
-          <TableCell>Exit Time</TableCell>
           <TableCell>Outcome</TableCell>
           <TableCell>Strategy</TableCell>
         </TableRow>
@@ -73,9 +71,7 @@ const TradeTable = ({trades, selected, setSelected, handleTradeClick, handleChec
             <TableCell>${trade.entryPrice.toFixed(2)}</TableCell>
             <TableCell>${trade.exitPrice.toFixed(2)}</TableCell>
             <TableCell>{trade.entryDate.toLocaleDateString()}</TableCell>
-            <TableCell>{trade.entryTime || '-'}</TableCell>
             <TableCell>{trade.exitDate.toLocaleDateString()}</TableCell>
-            <TableCell>{trade.exitTime || '-'}</TableCell>
             <TableCell
               sx={{
                 color: trade.outcome === 'win' ? 'success.main' : 'error.main',

@@ -8,7 +8,6 @@ import {
   Toolbar, 
   Typography, 
   Box, 
-  Container,
   CssBaseline,
   Drawer,
   List,
@@ -82,6 +81,14 @@ export default function RootLayout({
                           <Image src="/globe.svg" alt="Strategy" width={24} height={24} />
                         </ListItemIcon>
                         <ListItemText primary="Strategy" />
+                      </ListItemButton>
+                    </ListItem>
+                    <ListItem disablePadding>
+                      <ListItemButton component={Link} href="/analysis">
+                        <ListItemIcon>
+                          <Image src="/window.svg" alt="Execution Performance" width={24} height={24} />
+                        </ListItemIcon>
+                        <ListItemText primary="Execution Performance" />
                       </ListItemButton>
                     </ListItem>
                     <ListItem disablePadding>

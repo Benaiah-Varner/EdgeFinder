@@ -29,19 +29,11 @@ model Trade {
   exitPrice          Float?
   quantity           Int
   entryDate          DateTime
-  entryTime          String?
   exitDate           DateTime?
-  exitTime           String?
   tradeType          TradeType @default(LONG)
   imageUrl           String?
   description        String?
   pnl                Float?
-  properEntry        Boolean?
-  R                  Decimal? @db.Decimal(10, 4)
-  alignedWithTrend   Boolean?
-  properConditions   Boolean?
-  followedTpPlan     Boolean?
-  properSize         Boolean?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   strategyId         String?
